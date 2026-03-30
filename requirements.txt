@@ -1,0 +1,19 @@
+fastapi
+uvicorn
+langgraph
+langchain
+langchain-google-genai
+google-generativeai
+motor
+redis
+beanie
+pydantic-settings
+httpx
+beautifulsoup4
+python-dotenv
+motor
+# For task queuing if needed later in sprint
+celery
+flower
+
+chromadb
