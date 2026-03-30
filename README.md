@@ -1,97 +1,141 @@
 # 🧠 AI Tech Intelligence Platform
 
-A production-grade multi-agent system designed to autonomously track, analyze, and synthesize insights from the rapidly evolving AI ecosystem (MCP, RAG, Agentic Frameworks).
+A production-grade, multi-agent autonomous system designed to track, analyze, and synthesize insights from the rapidly evolving AI ecosystem (Model Context Protocol, RAG, Agentic Frameworks).
+
+This platform doesn't just collect data; it **understands** it, **visualizes** it, and **verifies** it through a self-correcting agentic loop.
 
 ---
 
-## 🔑 API Keys & Credentials Guide
+## 🏗️ System Architecture & Logic
 
-To run this platform, the agents need access to various external services. Below is a step-by-step guide on how to obtain the necessary API keys for your `.env` file. Most of these services offer **generous free tiers** suitable for development and moderate production use.
+The system is built on a **Modular Multi-Agent Architecture** using **LangGraph**. Unlike linear pipelines, this allows for cycles, self-correction, and state-aware processing.
 
-### 1. Google Gemini API Key (Primary LLM)
-*Used by the Summarizer, Evaluator, and Trend Detection agents for text and vision tasks.*
-1. Go to [Google AI Studio](https://aistudio.google.com/).
-2. Sign in with your Google account.
-3. Click on **"Get API key"** in the left navigation menu.
-4. Click **"Create API key in new project"** (or select an existing Google Cloud project).
-5. Copy the generated key.
-* **Cost:** Free tier available (rate limits apply).
-* **Env Variable:** `GEMINI_API_KEY`
+### The Agentic Workflow (The "Pulse")
 
-### 2. GitHub Personal Access Token
-*Used by the GitHub Collector Agent to fetch repositories using the GraphQL API without hitting strict unauthenticated rate limits.*
-1. Log in to [GitHub](https://github.com/).
-2. Go to **Settings** > **Developer settings** (at the bottom of the left sidebar).
-3. Select **Personal access tokens** > **Tokens (classic)**.
-4. Click **Generate new token (classic)**.
-5. Give it a descriptive name (e.g., `ai-tech-intel-agent`).
-6. Select the `public_repo` scope (or `repo` if you want it to analyze private repos).
-7. Scroll down and click **Generate token**. Copy it immediately (it won't be shown again).
-* **Cost:** Free.
-* **Env Variable:** `GITHUB_TOKEN`
+```text
+[Data Sources] --> [Collectors] --> [Filter] --> [Intelligence Core] --> [HITL Queue] --> [Delivery]
+    (GitHub)       (GitHub Agent)   (Memory    (Summarizer +      (React UI)      (Telegram)
+    (NewsAPI)      (News Agent)      Agent)     Evaluator Agent)
+```
 
-### 3. Telegram Bot Token & Chat ID
-*Used by the Notification Agent to send your daily "AI Intel" digests.*
-**To get the Bot Token:**
-1. Open Telegram and search for the **[@BotFather](https://t.me/BotFather)**.
-2. Send the message `/newbot`.
-3. Follow the prompts to name your bot and give it a username (must end in `bot`).
-4. BotFather will reply with your HTTP API Token. Copy this.
-
-**To get your Chat ID (where the bot will send messages):**
-1. Search for your newly created bot in Telegram and send it a message (e.g., "Hello").
-2. Search for **[@userinfobot](https://t.me/userinfobot)** or **[@RawDataBot](https://t.me/RawDataBot)** in Telegram and click Start.
-3. It will reply with a JSON payload or text containing your `Id` (a string of numbers). Copy this.
-* **Cost:** Free.
-* **Env Variables:** `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID`
-
-### 4. NewsAPI Key
-*Used by the News Collector Agent to scrape AI industry news and blogs.*
-1. Go to [NewsAPI.org](https://newsapi.org/).
-2. Click **Get API Key** and register for an account.
-3. Once registered, your API key will be displayed on your account dashboard.
-* **Cost:** Free for developer (development phase) use.
-* **Env Variable:** `NEWSAPI_KEY`
-
-### 5. LangSmith API Key (Optional but Highly Recommended)
-*Used for debugging LangGraph workflows, tracking agent reasoning, and monitoring LLM costs.*
-1. Go to [Smith.langchain.com](https://smith.langchain.com/).
-2. Sign up or log in.
-3. Go to **Settings** (gear icon) > **API Keys**.
-4. Click **Create API Key**.
-* **Cost:** Developer tier (Free) available.
-* **Env Variables:** `LANGCHAIN_TRACING_V2=true`, `LANGCHAIN_ENDPOINT`, `LANGCHAIN_API_KEY`, `LANGCHAIN_PROJECT`
+1.  **Discovery (Sprint 1):** Two specialized agents fetch raw technical data from the GitHub GraphQL API and NewsAPI.
+2.  **Semantic Memory (Sprint 2):** The **Memory Agent** uses **ChromaDB** (Vector Store) to perform a semantic check. If the incoming tool or framework is 85% similar to something we've already synthesized, it's discarded to prevent spam.
+3.  **Synthesis & Vision (Sprint 5):** The **Summarizer Agent** uses **Gemini 1.5 Pro**. It reads the documentation AND parses architecture diagrams (Vision) to extract technical implementation details.
+4.  **Self-Correction (Sprint 3):** An **Evaluator Agent** acts as a "Critic." It reviews the summary against the raw data. If it detects hallucinations or lacks technical depth, it sends the summary back for a rewrite.
+5.  **Pattern Detection:** The **Trend Agent** looks at batches of data to identify macro-trends (e.g., "The shift from JSON to MCP for context engineering").
+6.  **Curation (Sprint 4):** Nothing goes live without approval. Insights sit in a **Human-in-the-Loop (HITL)** queue on the React Dashboard.
 
 ---
 
-## ⚙️ Environment Setup
+## 🛠️ The Tech Stack: Why These?
 
-Create a `.env` file in the root of your project and populate it with the keys you gathered above:
+| Technology | Role | Why? |
+| :--- | :--- | :--- |
+| **FastAPI** | Backend API | High performance, native async support for handling multiple LLM calls. |
+| **LangGraph** | Orchestration | Best-in-class for stateful agents that need to loop/retry (like our Critic loop). |
+| **Google Gemini 1.5** | Intelligence | Huge 2M context window + native multi-modal vision for architecture diagrams. |
+| **ChromaDB** | Vector Store | Local, high-speed semantic search for deduplication (Memory). |
+| **MongoDB** | Document Store | Flexible schema for raw archives and processed insights. |
+| **Redis** | Cache/Queue | Caching frequent API results and acting as a task broker. |
+| **React + Vite** | Frontend | Lightning-fast HMR for the control dashboard. |
+| **Telegram Bot API** | Distribution | Instant, mobile-first delivery of the daily "AI Intel" digest. |
 
+---
+
+## 🔑 Setup & API Credentials
+
+To run this platform, you need to populate a `.env` file in the root directory.
+
+### 1. Obtain Your Keys
+*   **Gemini API Key:** Get it from [Google AI Studio](https://aistudio.google.com/).
+*   **GitHub Token:** Generate a [Personal Access Token](https://github.com/settings/tokens) (classic) with `public_repo` scope.
+*   **NewsAPI Key:** Register at [NewsAPI.org](https://newsapi.org/).
+*   **Telegram Bot:** Use [@BotFather](https://t.me/BotFather) to create a bot and get the token. Use [@userinfobot](https://t.me/userinfobot) to find your numeric Chat ID.
+
+### 2. Configure Environment
+Create a `.env` file:
 ```env
-# --- LLM Provider ---
-GEMINI_API_KEY="your_google_gemini_api_key_here"
-
-# --- Data Sources ---
-GITHUB_TOKEN="ghp_your_github_personal_access_token"
-NEWSAPI_KEY="your_newsapi_org_key"
-
-# --- Notifications ---
-TELEGRAM_BOT_TOKEN="your_telegram_bot_token"
-TELEGRAM_CHAT_ID="your_telegram_numeric_chat_id"
-
-# --- Observability (LangSmith) ---
-LANGCHAIN_TRACING_V2="true"
-LANGCHAIN_ENDPOINT="https://api.smith.langchain.com"
-LANGCHAIN_API_KEY="ls__your_langsmith_api_key"
-LANGCHAIN_PROJECT="ai-tech-intelligence"
-
-# --- Infrastructure / Databases ---
-# Assuming default local Docker setup
+GEMINI_API_KEY="your_key"
+GITHUB_TOKEN="your_key"
+NEWSAPI_KEY="your_key"
+TELEGRAM_BOT_TOKEN="your_key"
+TELEGRAM_CHAT_ID="your_id"
 MONGODB_URI="mongodb://localhost:27017"
 REDIS_URL="redis://localhost:6379/0"
 CHROMA_DB_DIR="./chroma_data"
 ```
 
-## 🚀 Quick Start
-*(Detailed setup instructions will be added here as development progresses through the Sprints).*
+---
+
+## 🚀 How to Run
+
+### Option A: The Production Way (Docker)
+This spins up the Backend, Frontend, MongoDB, Redis, and Neo4j in a single unified network.
+```bash
+docker-compose up --build -d
+```
+*   **Dashboard:** `http://localhost`
+*   **Backend API:** `http://localhost/api`
+
+### Option B: The Development Way (Manual)
+1.  **Start Infra:** `docker-compose up -d mongodb redis neo4j`
+2.  **Start Backend:**
+    ```bash
+    pip install -r requirements.txt
+    python -m backend.app.main
+    ```
+3.  **Start Frontend:**
+    ```bash
+    cd frontend
+    npm install
+    npm run dev
+    ```
+
+---
+
+## 🎮 Operating the Dashboard
+
+1.  **Trigger Agents:** Click "Trigger All Agents" to start a fresh crawl of the AI ecosystem.
+2.  **Review Queue:** Look through the "Pending" insights. These were generated by Gemini and verified by the Critic.
+3.  **Analyze Vision:** Check the "Technical Implementation" section—it contains insights Gemini extracted from architectural diagrams found in READMEs.
+4.  **Approve:** Click the **Checkmark** to index the insight into semantic memory and push it to your Telegram channel.
+5.  **Trends:** Switch to the "Macro Trends" tab to see high-level patterns identified across multiple discoveries.
+
+## 🚀 Deployment Strategies
+
+Depending on your scale and technical requirements, here are three recommended paths to move from local development to a production environment.
+
+### 1. The "Solo Power" Strategy (VPS + Docker)
+*Best for: Rapid deployment, low cost, personal or small team use.*
+*   **Provider:** DigitalOcean Droplet, AWS EC2, or Hetzner.
+*   **Setup:**
+    1.  Install Docker and Docker Compose on the server.
+    2.  Clone the repository and create your production `.env`.
+    3.  Run `docker-compose up -d --build`.
+*   **Networking:** Use the built-in Nginx proxy (as defined in the `Dockerfile`) to handle traffic on Port 80.
+*   **Persistence:** Ensure the `mongo_data`, `neo4j_data`, and `./chroma_data` volumes are backed up regularly.
+
+### 2. The "Cloud Native" Strategy (Managed Services)
+*Best for: High availability, hands-off infrastructure management.*
+*   **Frontend:** Deploy the `frontend/dist` folder to **Vercel** or **Netlify**.
+*   **Backend:** Deploy the FastAPI app as a containerized service on **Railway**, **Render**, or **AWS App Runner**.
+*   **Databases:**
+    *   **MongoDB:** Use **MongoDB Atlas** (Shared tier is fine for MVP).
+    *   **Redis:** Use **Upstash** or **Redis Cloud**.
+    *   **Vector Store:** Migrate ChromaDB to a managed **Pinecone** or **Weaviate** instance (requires small code change) OR use a persistent EBS volume on AWS.
+*   **Advantage:** Zero maintenance of underlying server OS or database clusters.
+
+### 3. The "Enterprise" Strategy (Kubernetes/AWS)
+*Best for: Scaling, complex dependency mapping, and CI/CD integration.*
+*   **Orchestration:** Deploy using **Helm Charts** to an EKS (AWS) or GKE (Google Cloud) cluster.
+*   **Task Management:** Use a separate **Celery Worker** pod for the long-running LLM/Crawl tasks to keep the API responsive.
+*   **CI/CD:** Use **GitHub Actions** to build the Docker image, push to Amazon ECR, and trigger a rolling update in Kubernetes.
+*   **Monitoring:** Integrate **Prometheus/Grafana** for system health and **LangSmith** for full agentic trace analysis.
+
+---
+
+## 🔒 Production Security Checklist
+*   [ ] **SSL/TLS:** Use Certbot/LetsEncrypt to enable HTTPS on your Nginx proxy.
+*   [ ] **Auth:** Implement JWT or OAuth2 in `backend/app/api` before exposing the Dashboard to the public web.
+*   [ ] **Rate Limiting:** Enable rate limiting in FastAPI to prevent API key exhaustion.
+*   [ ] **Secrets:** Never commit your `.env`. Use GitHub Secrets or AWS Secrets Manager.

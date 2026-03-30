@@ -17,3 +17,5 @@ celery
 flower
 
 chromadb
+
+neo4j
