@@ -12,6 +12,27 @@ class NotificationAgent:
         self.chat_id = settings.TELEGRAM_CHAT_ID
         self.url = f"https://api.telegram.org/bot{self.bot_token}/sendMessage"
 
+    async def send_admin_alert(self, message: str):
+        if not self.bot_token or not self.chat_id:
+            print("⚠️ Telegram credentials missing. Skipping admin alert.")
+            return
+
+        payload = {
+            "chat_id": self.chat_id,
+            "text": message,
+            "parse_mode": "Markdown"
+        }
+
+        async with httpx.AsyncClient() as client:
+            try:
+                response = await client.post(self.url, json=payload)
+                if response.status_code != 200:
+                    print(f"⚠️ Failed to send Admin Alert: {response.text}")
+                else:
+                    print("✅ Admin Alert sent successfully.")
+            except Exception as e:
+                print(f"⚠️ Telegram notification connection error: {e}")
+
     async def send_daily_digest(self, insights: List[Insight], trends: List[Trend]):
         if not self.bot_token or not self.chat_id:
             print("⚠️ Telegram credentials missing. Skipping notification.")

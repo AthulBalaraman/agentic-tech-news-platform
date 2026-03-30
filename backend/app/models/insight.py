@@ -10,6 +10,7 @@ class Insight(BaseModel):
     why_it_matters: str
     technical_implementation: str
     tags: List[str] = Field(default_factory=list)
+    status: str = "pending"  # "pending", "approved", "rejected"
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
     class Config:

@@ -87,24 +87,22 @@ async def save_insights_and_notify(state: AgentState) -> Dict[str, Any]:
     insights = state.get("insights", [])
     trends = state.get("trends", [])
     
-    # Save Insights to DB & Chroma
+    # Save Insights to DB & Chroma as "pending"
     if insights:
         docs = [i.model_dump() for i in insights]
         await db.db["insights"].insert_many(docs)
         
-        for i in insights:
-            vector_context = f"Title: {i.title} Summary: {i.what_is_it} Impact: {i.why_it_matters}"
-            vector_store.add_insight(
-                id=i.external_id,
-                text=vector_context,
-                metadata={"title": i.title, "source": i.source}
-            )
+        # We only add to semantic memory once approved, so we skip Vector Store here
+        # It will be added when the Admin clicks "Approve"
 
-    # Trigger Notification
-    notifier = NotificationAgent()
-    await notifier.send_daily_digest(insights, trends)
+    # Trigger Admin Notification
+    if insights or trends:
+        notifier = NotificationAgent()
+        admin_message = f"🤖 *Admin Alert*: {len(insights)} new insights and {len(trends)} trends are awaiting review in the Dashboard."
+        # Using a simplified payload structure for the alert
+        await notifier.send_admin_alert(admin_message)
             
-    return {"status": "Execution Complete: Database Updated & Notifications Sent"}
+    return {"status": "Execution Complete: Pending Insights Saved & Admin Alerted"}
 
 def create_orchestrator_graph():
     workflow = StateGraph(AgentState)
