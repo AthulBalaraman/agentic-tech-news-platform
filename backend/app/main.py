@@ -1,11 +1,30 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.cron import CronTrigger
 from .core.database import db, connect_to_mongo, close_mongo_connection
 from .core.vector_store import vector_store
 from .agents.orchestrator import orchestrator
 from .agents.notification_agent import NotificationAgent
 
 app = FastAPI(title="AI Tech Intelligence Platform API")
+
+# Initialize the scheduler
+scheduler = AsyncIOScheduler()
+
+# Define the scheduled task
+async def run_scheduled_collection():
+    print("⏰ Starting scheduled AI intelligence collection...")
+    initial_state = {
+        "github_results": [],
+        "news_results": [],
+        "status": "starting"
+    }
+    try:
+        result = await orchestrator.ainvoke(initial_state)
+        print(f"✅ Scheduled collection completed with status: {result['status']}")
+    except Exception as e:
+        print(f"❌ Scheduled collection failed: {e}")
 
 # Add CORS middleware to allow the React frontend to communicate with the backend
 app.add_middleware(
@@ -19,10 +38,19 @@ app.add_middleware(
 @app.on_event("startup")
 async def startup_db_client():
     await connect_to_mongo()
+    
+    # Schedule jobs for 10 AM and 4 PM (16:00)
+    scheduler.add_job(run_scheduled_collection, CronTrigger(hour=10, minute=0))
+    scheduler.add_job(run_scheduled_collection, CronTrigger(hour=16, minute=0))
+    
+    scheduler.start()
+    print("🚀 Scheduler started: Collection scheduled for 10:00 AM and 4:00 PM daily.")
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
     await close_mongo_connection()
+    scheduler.shutdown()
+    print("🛑 Scheduler shut down.")
 
 @app.get("/")
 async def root():

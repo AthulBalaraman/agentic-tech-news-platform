@@ -1,4 +1,4 @@
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from functools import lru_cache
 
 class Settings(BaseSettings):
@@ -11,9 +11,9 @@ class Settings(BaseSettings):
     MONGODB_URI: str = "mongodb://localhost:27017"
     DATABASE_NAME: str = "ai_intel_db"
     REDIS_URL: str = "redis://localhost:6379/0"
+    CHROMA_DB_DIR: str = "./chroma_data"
 
-    class Config:
-        env_file = ".env"
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 @lru_cache()
 def get_settings():

@@ -1,7 +1,7 @@
 import json
 from typing import List
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain.prompts import PromptTemplate
+from langchain_core.prompts import PromptTemplate
 from ..models.insight import Insight
 from ..models.trend import Trend
 from ..core.config import get_settings
@@ -19,10 +19,10 @@ class TrendAgent:
         self.prompt = PromptTemplate.from_template(
             """You are an AI Tech Trend Analyst. Review the following recent technical insights and identify 1-3 macro trends.
             For example: "Rise of Postgres MCP Servers", "Agentic RAG frameworks gaining traction", or "Shift towards local embedding models".
-            
+
             Recent Insights:
             {insights_text}
-            
+
             Respond ONLY in valid JSON format matching this schema (a list of objects):
             [
                 {{
@@ -37,15 +37,15 @@ class TrendAgent:
     async def detect_trends(self, insights: List[Insight]) -> List[Trend]:
         if not insights or len(insights) < 3:
             return [] # Need a critical mass of data points to form a real trend
-            
+
         insights_text = "\n\n".join([f"- {i.title}: {i.what_is_it}" for i in insights])
         chain = self.prompt | self.llm
-        
+
         try:
             response = await chain.ainvoke({"insights_text": insights_text})
             raw_json = response.content.replace("```json", "").replace("```", "").strip()
             parsed = json.loads(raw_json)
-            
+
             trends = []
             for t in parsed:
                 trends.append(Trend(
@@ -57,3 +57,4 @@ class TrendAgent:
         except Exception as e:
             print(f"⚠️ Trend Agent failed: {e}")
             return []
+
