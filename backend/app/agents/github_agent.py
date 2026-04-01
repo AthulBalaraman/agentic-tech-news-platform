@@ -16,12 +16,14 @@ class GitHubAgent:
             "langgraph",
             "autogen",
             "rag pipeline",
-            "context engineering"
+            "ai architecture"
         ]
 
     async def fetch_trending_repos(self):
         """Fetch high-quality repositories across multiple AI topics."""
         all_results = []
+        seen_urls = set()
+        
         # Calculate date for 'recently updated' (e.g., last 14 days for higher quality)
         since_date = (datetime.utcnow() - timedelta(days=14)).strftime("%Y-%m-%d")
         
@@ -34,7 +36,7 @@ class GitHubAgent:
                 
                 gql_query = """
                 query($searchQuery: String!) {
-                  search(query: $searchQuery, type: REPOSITORY, first: 5) {
+                  search(query: $searchQuery, type: REPOSITORY, first: 3) {
                     edges {
                       node {
                         ... on Repository {
@@ -73,6 +75,11 @@ class GitHubAgent:
                     for edge in data["data"]["search"]["edges"]:
                         repo = edge["node"]
                         
+                        url = repo["url"]
+                        if url in seen_urls:
+                            continue
+                        seen_urls.add(url)
+                        
                         # Use README if available, else description
                         readme_obj = repo.get("readme")
                         content = repo.get("description") or ""
@@ -81,7 +88,7 @@ class GitHubAgent:
 
                         all_results.append(RawData(
                             source="github",
-                            external_id=repo["url"],
+                            external_id=url,
                             title=repo["nameWithOwner"],
                             content=content,
                             metadata={
@@ -95,7 +102,8 @@ class GitHubAgent:
                 except Exception as e:
                     print(f"❌ GitHub API error for {topic}: {e}")
         
-        return all_results
-
-
-
+        # Sort by stars descending
+        all_results.sort(key=lambda x: x.metadata.get("stars", 0), reverse=True)
+        
+        # Return exactly top 3 repos
+        return all_results[:3]

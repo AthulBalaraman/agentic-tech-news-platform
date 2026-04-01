@@ -56,7 +56,7 @@ async def poll_telegram_updates():
                     for update in data.get("result", []):
                         TELEGRAM_OFFSET = update["update_id"]
                         
-                        # 1. Handle New Join Requests (/start)
+                        # 1. Handle New Join Requests (/start) and Commands (/clear)
                         message = update.get("message")
                         if message and "text" in message:
                             chat_id = message["chat"]["id"]
@@ -99,6 +99,26 @@ async def poll_telegram_updates():
                                     "text": "⏳ *Access Request Received*\n\nYour request has been sent to the admin for approval. You will be notified once access is granted.",
                                     "parse_mode": "Markdown"
                                 })
+
+                            elif text.startswith("/clear"):
+                                # Ensure only the main admin can execute this
+                                if str(chat_id) == settings.TELEGRAM_CHAT_ID or chat_id == int(settings.TELEGRAM_CHAT_ID):
+                                    print("🧹 Admin requested to clear all intelligence data via Telegram.")
+                                    await db.db["insights"].delete_many({})
+                                    await db.db["trends"].delete_many({})
+                                    await db.db["raw_data"].delete_many({})
+                                    vector_store.clear()
+                                    
+                                    await client.post(f"https://api.telegram.org/bot{bot_token}/sendMessage", json={
+                                        "chat_id": chat_id,
+                                        "text": "🧹 *Data Cleared!*\n\nAll insights, trends, and raw data have been permanently deleted.",
+                                        "parse_mode": "Markdown"
+                                    })
+                                else:
+                                    await client.post(f"https://api.telegram.org/bot{bot_token}/sendMessage", json={
+                                        "chat_id": chat_id,
+                                        "text": "❌ You do not have permission to clear data."
+                                    })
 
                         # 2. Handle Admin Callbacks (Approve/Reject buttons)
                         callback = update.get("callback_query")
@@ -175,6 +195,18 @@ async def shutdown_db_client():
     await close_mongo_connection()
     scheduler.shutdown()
     print("🛑 Scheduler shut down.")
+
+@app.delete("/api/system/clear")
+async def clear_system_data():
+    """Clear all intelligence data from the database and vector store."""
+    try:
+        await db.db["insights"].delete_many({})
+        await db.db["trends"].delete_many({})
+        await db.db["raw_data"].delete_many({})
+        vector_store.clear()
+        return {"message": "All intelligence data cleared successfully."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/bot/register")
 async def register_subscriber(chat_id: int, user_name: str = "Unknown"):

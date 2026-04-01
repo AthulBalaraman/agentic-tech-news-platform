@@ -31,4 +31,15 @@ class VectorStore:
             n_results=n_results
         )
 
+    def clear(self):
+        """Delete all vectors and recreate the collection."""
+        try:
+            self.client.delete_collection("tech_context")
+            self.collection = self.client.get_or_create_collection(
+                name="tech_context",
+                metadata={"hnsw:space": "cosine"}
+            )
+        except Exception as e:
+            print(f"⚠️ Error clearing ChromaDB: {e}")
+
 vector_store = VectorStore()

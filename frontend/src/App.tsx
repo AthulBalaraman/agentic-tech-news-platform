@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
-import { RefreshCw, Check, X, ExternalLink, Activity, TrendingUp, Send, Users, Star, GitBranch, ChevronDown, ChevronUp, ChevronLeft, ChevronRight } from 'lucide-react'
+import { RefreshCw, Check, X, ExternalLink, Activity, TrendingUp, Send, Users, Star, GitBranch, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react'
 
 interface Insight {
   _id: string
@@ -95,6 +95,25 @@ export default function App() {
     }
   }
 
+  const clearSystemData = async () => {
+    if (!window.confirm("⚠️ WARNING: This will permanently delete ALL insights, trends, and raw data from the database and vector store. Subscribers will NOT be deleted. Are you sure you want to proceed?")) {
+      return;
+    }
+    
+    setLoading(true)
+    try {
+      await axios.delete(`${API_BASE}/api/system/clear`)
+      setInsightPage(1)
+      setTrendPage(1)
+      await fetchData()
+      alert('System data cleared successfully.')
+    } catch (err) {
+      alert('Failed to clear system data')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const approveInsight = async (id: string) => {
     try {
       await axios.post(`${API_BASE}/api/insights/${encodeURIComponent(id)}/approve`)
@@ -142,14 +161,25 @@ export default function App() {
           <p className="text-slate-400 mt-2">Multi-agent technical synthesis engine</p>
         </div>
         
-        <button 
-          onClick={triggerCollection}
-          disabled={loading}
-          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 px-6 py-3 rounded-lg font-medium transition-all"
-        >
-          <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
-          {loading ? 'Processing Agents...' : 'Trigger All Agents'}
-        </button>
+        <div className="flex items-center gap-4">
+          <button 
+            onClick={clearSystemData}
+            disabled={loading}
+            className="flex items-center gap-2 bg-red-600/20 hover:bg-red-600/40 text-red-400 disabled:opacity-50 px-4 py-3 rounded-lg font-medium transition-all"
+            title="Clear all insights, trends, and database records"
+          >
+            <Trash2 className="w-5 h-5" />
+          </button>
+
+          <button 
+            onClick={triggerCollection}
+            disabled={loading}
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 px-6 py-3 rounded-lg font-medium transition-all"
+          >
+            <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+            {loading ? 'Processing Agents...' : 'Trigger All Agents'}
+          </button>
+        </div>
       </header>
 
       <main className="max-w-6xl mx-auto">
