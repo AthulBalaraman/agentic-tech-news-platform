@@ -11,7 +11,7 @@ class EvaluatorAgent:
     def __init__(self):
         # Using Gemini 1.5 Pro for critical evaluation and complex reasoning
         self.llm = ChatGoogleGenerativeAI(
-            model="gemini-2.0-pro",
+            model="gemini-2.0-flash",
             temperature=0.1,
             google_api_key=settings.GEMINI_API_KEY
         )

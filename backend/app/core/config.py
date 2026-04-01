@@ -1,5 +1,10 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from functools import lru_cache
+from dotenv import load_dotenv
+import os
+
+# Force load the .env file and OVERRIDE any existing system environment variables
+load_dotenv(override=True)
 
 class Settings(BaseSettings):
     APP_NAME: str = "AI Tech Intelligence Platform"

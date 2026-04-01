@@ -8,7 +8,7 @@ settings = get_settings()
 class GitHubAgent:
     def __init__(self):
         self.url = "https://api.github.com/graphql"
-        self.headers = {"Authorization": f"bearer {settings.GITHUB_TOKEN}"}
+        self.headers = {"Authorization": f"Bearer {settings.GITHUB_TOKEN}"}
 
     async def fetch_trending_repos(self, query: str = "mcp server"):
         # Basic GraphQL query to search for repositories
@@ -35,7 +35,7 @@ class GitHubAgent:
         }
         """
         variables = {"searchQuery": f"{query} sort:updated-desc"}
-        
+
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 self.url,
@@ -43,7 +43,7 @@ class GitHubAgent:
                 headers=self.headers
             )
             data = response.json()
-            
+
             if "data" not in data or "search" not in data["data"]:
                 print(f"Error fetching from GitHub: {data}")
                 return []
@@ -51,15 +51,25 @@ class GitHubAgent:
             results = []
             for edge in data["data"]["search"]["edges"]:
                 repo = edge["node"]
+
+                # Safely handle missing READMEs
+                readme_obj = repo.get("readme")
+                content = repo.get("description") or ""
+                if readme_obj and isinstance(readme_obj, dict):
+                    content = readme_obj.get("text", content)
+
                 results.append(RawData(
                     source="github",
                     external_id=repo["url"],
                     title=repo["nameWithOwner"],
-                    content=repo.get("readme", {}).get("text", repo["description"] or ""),
+                    content=content,
                     metadata={
-                        "stars": repo["stargazerCount"],
-                        "updated_at": repo["updatedAt"],
-                        "description": repo["description"]
+                        "stars": repo.get("stargazerCount", 0),
+                        "updated_at": repo.get("updatedAt", ""),
+                        "description": repo.get("description", "")
                     }
                 ))
             return results
+
+
+
