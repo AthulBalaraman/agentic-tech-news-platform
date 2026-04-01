@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
-import { RefreshCw, Check, X, ExternalLink, Activity, TrendingUp } from 'lucide-react'
+import { RefreshCw, Check, X, ExternalLink, Activity, TrendingUp, Send } from 'lucide-react'
 
 interface Insight {
   _id: string
@@ -61,10 +61,19 @@ export default function App() {
 
   const approveInsight = async (id: string) => {
     try {
-      await axios.post(`${API_BASE}/api/insights/${id}/approve`)
+      await axios.post(`${API_BASE}/api/insights/${encodeURIComponent(id)}/approve`)
       setInsights(insights.filter(i => i.external_id !== id))
     } catch (err) {
       alert('Failed to approve insight')
+    }
+  }
+
+  const sendTrend = async (id: string) => {
+    try {
+      await axios.post(`${API_BASE}/api/trends/${id}/send`)
+      alert('Trend sent to Telegram successfully!')
+    } catch (err) {
+      alert('Failed to send trend to Telegram')
     }
   }
 
@@ -166,8 +175,17 @@ export default function App() {
         ) : (
           <div className="grid gap-6 md:grid-cols-2">
             {trends.map(t => (
-              <div key={t._id} className="bg-slate-800/50 border border-slate-700 p-6 rounded-xl">
-                <h3 className="text-xl font-bold text-emerald-400 mb-2">{t.trend_name}</h3>
+              <div key={t._id} className="bg-slate-800/50 border border-slate-700 p-6 rounded-xl relative group">
+                <div className="flex justify-between items-start mb-2">
+                  <h3 className="text-xl font-bold text-emerald-400">{t.trend_name}</h3>
+                  <button 
+                    onClick={() => sendTrend(t._id)}
+                    className="p-2 bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
+                    title="Send Trend to Telegram"
+                  >
+                    <Send className="w-4 h-4" />
+                  </button>
+                </div>
                 <p className="text-slate-400 text-sm mb-4 leading-relaxed">{t.description}</p>
                 <div className="flex flex-wrap gap-2">
                   {t.related_insights.map(r => (

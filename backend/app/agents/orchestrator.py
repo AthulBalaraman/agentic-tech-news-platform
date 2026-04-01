@@ -125,7 +125,16 @@ async def save_insights_and_notify(state: AgentState) -> Dict[str, Any]:
     # Trigger Admin Notification
     if insights or trends:
         notifier = NotificationAgent()
-        admin_message = f"🤖 *Agentic Platform Update*\n\nYour AI swarm just finished a sweep!\n\n💡 *{len(insights)}* new insights awaiting review.\n📈 *{len(trends)}* new macro trends detected."
+        
+        insight_preview = ""
+        if insights:
+            insight_preview = "\n\n💡 *Top Insights Found:*\n"
+            for i in insights[:5]: # Show first 5
+                insight_preview += f"• {i.title}\n"
+            if len(insights) > 5:
+                insight_preview += f"_...and {len(insights) - 5} more._"
+
+        admin_message = f"🤖 *Agentic Platform Update*\n\nYour AI swarm just finished a sweep!\n\n💡 *{len(insights)}* new insights awaiting review.\n📈 *{len(trends)}* new macro trends detected.{insight_preview}"
         # Using a simplified payload structure for the alert
         await notifier.send_admin_alert(admin_message)
         print("[Orchestrator] ✅ Admin alert sent to Telegram.")

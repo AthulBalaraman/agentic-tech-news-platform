@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
+from bson import ObjectId
 from .core.database import db, connect_to_mongo, close_mongo_connection
 from .core.vector_store import vector_store
 from .agents.orchestrator import orchestrator
@@ -79,7 +80,7 @@ async def get_insights(status: str = "pending"):
         doc["_id"] = str(doc["_id"])
     return insights
 
-@app.post("/api/insights/{external_id}/approve")
+@app.post("/api/insights/{external_id:path}/approve")
 async def approve_insight(external_id: str):
     """Approve an insight, save it to Vector DB, and send to Telegram."""
     # Find the insight
@@ -121,3 +122,22 @@ async def get_trends():
     for doc in trends:
         doc["_id"] = str(doc["_id"])
     return trends
+
+@app.post("/api/trends/{trend_id}/send")
+async def send_trend(trend_id: str):
+    """Send a detected macro trend to the Telegram bot."""
+    try:
+        doc_id = ObjectId(trend_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid trend ID format")
+
+    trend_doc = await db.db["trends"].find_one({"_id": doc_id})
+    if not trend_doc:
+        raise HTTPException(status_code=404, detail="Trend not found")
+        
+    notifier = NotificationAgent()
+    related = ", ".join(trend_doc.get('related_insights', []))
+    message = f"📈 *Macro Trend Alert: {trend_doc['trend_name']}*\n\n{trend_doc['description']}\n\n_Related Concepts:_ {related}"
+    
+    await notifier.send_admin_alert(message)
+    return {"message": "Trend sent to Telegram"}
