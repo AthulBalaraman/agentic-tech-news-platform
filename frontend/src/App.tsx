@@ -44,6 +44,10 @@ export default function App() {
   const [trends, setTrends] = useState<Trend[]>([])
   const [subscribers, setSubscribers] = useState<Subscriber[]>([])
   
+  // Sent UI states
+  const [sentInsights, setSentInsights] = useState<Set<string>>(new Set())
+  const [sentTrends, setSentTrends] = useState<Set<string>>(new Set())
+
   // Pagination State
   const [insightPage, setInsightPage] = useState(1)
   const [insightTotalPages, setInsightTotalPages] = useState(1)
@@ -94,13 +98,8 @@ export default function App() {
   const approveInsight = async (id: string) => {
     try {
       await axios.post(`${API_BASE}/api/insights/${encodeURIComponent(id)}/approve`)
-      setInsights(insights.filter(i => i.external_id !== id))
-      // If we run out of insights on this page, fetch again
-      if (insights.length === 1 && insightPage > 1) {
-        setInsightPage(insightPage - 1)
-      } else if (insights.length === 1) {
-          fetchData()
-      }
+      setSentInsights(prev => new Set(prev).add(id))
+      // Note: Not auto-filtering so user can see "Sent" state
     } catch (err) {
       alert('Failed to approve insight')
     }
@@ -109,7 +108,7 @@ export default function App() {
   const sendTrend = async (id: string) => {
     try {
       await axios.post(`${API_BASE}/api/trends/${id}/send`)
-      alert('Trend sent to Telegram successfully!')
+      setSentTrends(prev => new Set(prev).add(id))
     } catch (err) {
       alert('Failed to send trend to Telegram')
     }
@@ -186,15 +185,12 @@ export default function App() {
               </div>
             )}
             {insights.map(i => (
-              <div key={i._id} className="bg-slate-800/50 border border-slate-700 p-6 rounded-xl group overflow-hidden">
+              <div key={i._id} className={`bg-slate-800/50 border ${sentInsights.has(i.external_id) ? 'border-emerald-500/50 opacity-60' : 'border-slate-700'} p-6 rounded-xl group overflow-hidden transition-all duration-300`}>
                 <div className="flex justify-between items-start mb-4">
                   <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
+                    <div className="flex items-center gap-3 mb-1">
                       <h3 className="text-xl font-bold flex items-center gap-2">
                         {i.title}
-                        <a href={i.external_id} target="_blank" className="text-slate-500 hover:text-blue-400">
-                          <ExternalLink className="w-4 h-4" />
-                        </a>
                       </h3>
                       {i.source === 'github' && i.metadata?.stars !== undefined && (
                         <div className="flex items-center gap-1 bg-amber-900/20 text-amber-500 px-2 py-0.5 rounded text-xs font-bold border border-amber-900/30">
@@ -202,6 +198,13 @@ export default function App() {
                         </div>
                       )}
                     </div>
+                    
+                    <div className="mb-3">
+                       <a href={i.external_id} target="_blank" className="text-blue-400 hover:text-blue-300 flex items-center gap-1 text-sm font-medium w-fit">
+                         <ExternalLink className="w-4 h-4" /> {i.external_id}
+                       </a>
+                    </div>
+
                     <div className="flex flex-wrap gap-2">
                       <span className="text-xs bg-slate-700 px-2 py-1 rounded text-slate-300 uppercase tracking-wider">{i.source}</span>
                       {i.tags.map(tag => (
@@ -209,11 +212,30 @@ export default function App() {
                       ))}
                     </div>
                   </div>
-                  <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-all">
-                    <button onClick={() => approveInsight(i.external_id)} className="p-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg" title="Approve & Send"><Check className="w-5 h-5" /></button>
-                    <button className="p-2 bg-red-600/20 hover:bg-red-600/40 text-red-400 rounded-lg" title="Reject"><X className="w-5 h-5" /></button>
+                  
+                  <div className="flex gap-2">
+                    {sentInsights.has(i.external_id) ? (
+                      <span className="flex items-center gap-1 px-4 py-2 bg-emerald-900/30 text-emerald-400 rounded-lg text-sm font-bold border border-emerald-500/30">
+                         <Check className="w-4 h-4"/> Sent
+                      </span>
+                    ) : (
+                      <div className="opacity-0 group-hover:opacity-100 transition-all flex gap-2">
+                        <button onClick={() => approveInsight(i.external_id)} className="bg-emerald-600 hover:bg-emerald-500 rounded-lg flex items-center gap-2 px-4 py-2 text-sm font-bold transition-all shadow-lg" title="Approve & Send">
+                          <Check className="w-4 h-4" /> Approve
+                        </button>
+                        <button className="p-2 bg-red-600/20 hover:bg-red-600/40 text-red-400 rounded-lg" title="Reject">
+                          <X className="w-5 h-5" />
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
+                
+                {i.metadata?.image_url && (
+                  <div className="mb-6 rounded-lg overflow-hidden border border-slate-700 max-h-[300px] flex justify-center bg-slate-900">
+                    <img src={i.metadata.image_url} alt={i.title} className="w-full h-full object-cover object-center max-w-[600px]" />
+                  </div>
+                )}
                 
                 <div className="grid md:grid-cols-2 gap-6 text-sm mb-4">
                   <div className="space-y-4">
@@ -237,7 +259,7 @@ export default function App() {
                       onClick={() => setExpandedInsight(expandedInsight === i._id ? null : i._id)}
                       className="mt-3 text-xs font-bold text-blue-400 hover:text-blue-300 flex items-center gap-1 uppercase"
                     >
-                      {expandedInsight === i._id ? <><ChevronUp className="w-3 h-3" /> Show Less</> : <><ChevronDown className="w-3 h-3" /> Read Technical Details</>}
+                      {expandedInsight === i._id ? <><ChevronUp className="w-3 h-3" /> Show Less</> : <><ChevronDown className="w-3 h-3" /> Read Detailed Implementation</>}
                     </button>
                   </div>
                 </div>
@@ -245,7 +267,6 @@ export default function App() {
                 {i.metadata?.updated_at && (
                   <div className="pt-4 border-t border-slate-700/30 text-[10px] text-slate-500 flex justify-between">
                     <span>Last Updated: {new Date(i.metadata.updated_at).toLocaleDateString()}</span>
-                    <span>External ID: {i.external_id}</span>
                   </div>
                 )}
               </div>
@@ -257,17 +278,17 @@ export default function App() {
                 <button 
                   onClick={() => setInsightPage(p => Math.max(1, p - 1))}
                   disabled={insightPage === 1}
-                  className="p-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 rounded-lg flex items-center gap-1"
+                  className="p-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 rounded-lg flex items-center gap-1 font-medium"
                 >
                   <ChevronLeft className="w-4 h-4" /> Previous
                 </button>
-                <span className="text-slate-400 text-sm">
+                <span className="text-slate-400 text-sm font-bold">
                   Page {insightPage} of {insightTotalPages}
                 </span>
                 <button 
                   onClick={() => setInsightPage(p => Math.min(insightTotalPages, p + 1))}
                   disabled={insightPage === insightTotalPages}
-                  className="p-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 rounded-lg flex items-center gap-1"
+                  className="p-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 rounded-lg flex items-center gap-1 font-medium"
                 >
                   Next <ChevronRight className="w-4 h-4" />
                 </button>
@@ -280,12 +301,20 @@ export default function App() {
           <div className="grid gap-6">
             <div className="grid md:grid-cols-2 gap-6">
               {trends.map(t => (
-                <div key={t._id} className="bg-slate-800/50 border border-slate-700 p-6 rounded-xl relative group">
-                  <div className="flex justify-between items-start mb-2">
+                <div key={t._id} className={`bg-slate-800/50 border ${sentTrends.has(t._id) ? 'border-emerald-500/50 opacity-60' : 'border-slate-700'} p-6 rounded-xl relative group transition-all duration-300`}>
+                  <div className="flex justify-between items-start mb-4">
                     <h3 className="text-xl font-bold text-emerald-400">{t.trend_name}</h3>
-                    <button onClick={() => sendTrend(t._id)} className="p-2 bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 rounded-lg opacity-0 group-hover:opacity-100 transition-all" title="Send to Telegram"><Send className="w-4 h-4" /></button>
+                    {sentTrends.has(t._id) ? (
+                      <span className="flex items-center gap-1 px-3 py-1 bg-emerald-900/30 text-emerald-400 rounded-lg text-xs font-bold border border-emerald-500/30">
+                        <Check className="w-3 h-3"/> Sent
+                      </span>
+                    ) : (
+                      <button onClick={() => sendTrend(t._id)} className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-all flex items-center gap-2 text-xs font-bold shadow-lg" title="Send to Telegram">
+                        <Send className="w-3 h-3" /> Send Alert
+                      </button>
+                    )}
                   </div>
-                  <p className="text-slate-400 text-sm mb-4 leading-relaxed">{t.description}</p>
+                  <p className="text-slate-300 text-sm mb-4 leading-relaxed">{t.description}</p>
                   <div className="flex flex-wrap gap-2">{t.related_insights.map(r => (<span key={r} className="text-[10px] bg-slate-700 px-2 py-1 rounded text-slate-300 italic">{r}</span>))}</div>
                 </div>
               ))}
@@ -297,17 +326,17 @@ export default function App() {
                 <button 
                   onClick={() => setTrendPage(p => Math.max(1, p - 1))}
                   disabled={trendPage === 1}
-                  className="p-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 rounded-lg flex items-center gap-1"
+                  className="p-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 rounded-lg flex items-center gap-1 font-medium"
                 >
                   <ChevronLeft className="w-4 h-4" /> Previous
                 </button>
-                <span className="text-slate-400 text-sm">
+                <span className="text-slate-400 text-sm font-bold">
                   Page {trendPage} of {trendTotalPages}
                 </span>
                 <button 
                   onClick={() => setTrendPage(p => Math.min(trendTotalPages, p + 1))}
                   disabled={trendPage === trendTotalPages}
-                  className="p-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 rounded-lg flex items-center gap-1"
+                  className="p-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 rounded-lg flex items-center gap-1 font-medium"
                 >
                   Next <ChevronRight className="w-4 h-4" />
                 </button>

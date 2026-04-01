@@ -49,7 +49,8 @@ class NotificationAgent:
                 payload = {
                     "chat_id": cid,
                     "text": message,
-                    "parse_mode": "Markdown"
+                    "parse_mode": "Markdown",
+                    "disable_web_page_preview": False
                 }
                 if reply_markup:
                     payload["reply_markup"] = reply_markup
@@ -96,7 +97,7 @@ class NotificationAgent:
                     "chat_id": cid,
                     "text": message,
                     "parse_mode": "Markdown",
-                    "disable_web_page_preview": True
+                    "disable_web_page_preview": False
                 }
                 try:
                     response = await client.post(self.url, json=payload)

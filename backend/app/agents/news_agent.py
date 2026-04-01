@@ -37,7 +37,8 @@ class NewsAgent:
                         "author": article["author"],
                         "published_at": article["publishedAt"],
                         "source_name": article["source"]["name"],
-                        "description": article["description"]
+                        "description": article["description"],
+                        "image_url": article.get("urlToImage", "")
                     }
                 ))
             return results

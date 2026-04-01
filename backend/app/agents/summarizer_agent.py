@@ -28,7 +28,7 @@ class SummarizerAgent:
             {{
                 "what_is_it": "A concise 1-sentence summary of what this tool or framework does.",
                 "why_it_matters": "A 1-2 sentence explanation of its impact on the AI ecosystem.",
-                "technical_implementation": "A brief explanation of its underlying tech, architecture (if diagram provided), or how a developer would use it.",
+                "technical_implementation": "A detailed, in-depth explanation (2-3 paragraphs) of its underlying tech, architecture, and how a developer would use it. Be thorough and comprehensive.",
                 "tags": ["tag1", "tag2", "tag3"]
             }}
             """
