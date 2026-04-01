@@ -12,7 +12,7 @@ class TrendAgent:
     def __init__(self):
         # Gemini 1.5 Flash is perfect for pattern recognition across multiple items
         self.llm = ChatGoogleGenerativeAI(
-            model="gemini-1.5-flash",
+            model="gemini-2.0-flash",
             temperature=0.3,
             google_api_key=settings.GEMINI_API_KEY
         )

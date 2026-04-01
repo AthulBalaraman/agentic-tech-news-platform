@@ -14,7 +14,7 @@ class SummarizerAgent:
     def __init__(self):
         # We switch to Gemini 1.5 Pro here because it handles multi-modal (Vision) tasks much better
         self.llm = ChatGoogleGenerativeAI(
-            model="gemini-1.5-pro",
+            model="gemini-2.0-pro",
             temperature=0.2,
             google_api_key=settings.GEMINI_API_KEY
         )
