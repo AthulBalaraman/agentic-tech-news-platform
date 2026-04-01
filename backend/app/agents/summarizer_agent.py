@@ -91,7 +91,8 @@ class SummarizerAgent:
                 what_is_it=parsed.get("what_is_it", "N/A"),
                 why_it_matters=parsed.get("why_it_matters", "N/A"),
                 technical_implementation=parsed.get("technical_implementation", "N/A"),
-                tags=parsed.get("tags", [])
+                tags=parsed.get("tags", []),
+                metadata=item.metadata
             )
         except Exception as e:
             print(f"⚠️ Summarizer failed for {item.title}: {e}")

@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 
 class Insight(BaseModel):
     title: str
@@ -11,6 +11,7 @@ class Insight(BaseModel):
     technical_implementation: str
     tags: List[str] = Field(default_factory=list)
     status: str = "pending"  # "pending", "approved", "rejected"
+    metadata: Dict[str, Any] = Field(default_factory=dict)
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
     class Config:

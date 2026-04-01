@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
-import { RefreshCw, Check, X, ExternalLink, Activity, TrendingUp, Send, Users } from 'lucide-react'
+import { RefreshCw, Check, X, ExternalLink, Activity, TrendingUp, Send, Users, Star, GitBranch, ChevronDown, ChevronUp, ChevronLeft, ChevronRight } from 'lucide-react'
 
 interface Insight {
   _id: string
@@ -12,6 +12,7 @@ interface Insight {
   technical_implementation: string
   status: string
   tags: string[]
+  metadata: any
 }
 
 interface Trend {
@@ -29,24 +30,44 @@ interface Subscriber {
   registered_at: string
 }
 
+interface PaginatedResponse<T> {
+  items: T[];
+  total: number;
+  page: number;
+  pages: number;
+}
+
 const API_BASE = 'http://localhost:8000'
 
 export default function App() {
   const [insights, setInsights] = useState<Insight[]>([])
   const [trends, setTrends] = useState<Trend[]>([])
   const [subscribers, setSubscribers] = useState<Subscriber[]>([])
+  
+  // Pagination State
+  const [insightPage, setInsightPage] = useState(1)
+  const [insightTotalPages, setInsightTotalPages] = useState(1)
+  const [trendPage, setTrendPage] = useState(1)
+  const [trendTotalPages, setTrendTotalPages] = useState(1)
+  
   const [loading, setLoading] = useState(false)
   const [activeTab, setActiveTab] = useState<'pending' | 'trends' | 'subscribers'>('pending')
+  const [expandedInsight, setExpandedInsight] = useState<string | null>(null)
 
   const fetchData = async () => {
     try {
       const [insightsRes, trendsRes, subsRes] = await Promise.all([
-        axios.get(`${API_BASE}/api/insights?status=pending`),
-        axios.get(`${API_BASE}/api/trends`),
-        axios.get(`${API_BASE}/api/subscribers?status=pending`)
+        axios.get<PaginatedResponse<Insight>>(`${API_BASE}/api/insights?status=pending&page=${insightPage}&limit=10`),
+        axios.get<PaginatedResponse<Trend>>(`${API_BASE}/api/trends?page=${trendPage}&limit=10`),
+        axios.get(`${API_BASE}/api/subscribers?status=pending`) // Assuming subs rarely exceed 100 for now
       ])
-      setInsights(insightsRes.data)
-      setTrends(trendsRes.data)
+      
+      setInsights(insightsRes.data.items)
+      setInsightTotalPages(insightsRes.data.pages)
+      
+      setTrends(trendsRes.data.items)
+      setTrendTotalPages(trendsRes.data.pages)
+      
       setSubscribers(subsRes.data)
     } catch (err) {
       console.error('Error fetching data:', err)
@@ -55,7 +76,7 @@ export default function App() {
 
   useEffect(() => {
     fetchData()
-  }, [])
+  }, [insightPage, trendPage]) // Re-fetch when page changes
 
   const triggerCollection = async () => {
     setLoading(true)
@@ -74,6 +95,12 @@ export default function App() {
     try {
       await axios.post(`${API_BASE}/api/insights/${encodeURIComponent(id)}/approve`)
       setInsights(insights.filter(i => i.external_id !== id))
+      // If we run out of insights on this page, fetch again
+      if (insights.length === 1 && insightPage > 1) {
+        setInsightPage(insightPage - 1)
+      } else if (insights.length === 1) {
+          fetchData()
+      }
     } catch (err) {
       alert('Failed to approve insight')
     }
@@ -133,14 +160,14 @@ export default function App() {
             className={`pb-4 px-2 flex items-center gap-2 transition-all ${activeTab === 'pending' ? 'border-b-2 border-blue-500 text-blue-400 font-bold' : 'text-slate-400'}`}
           >
             <Activity className="w-4 h-4" />
-            Review Queue ({insights.length})
+            Review Queue
           </button>
           <button 
             onClick={() => setActiveTab('trends')}
             className={`pb-4 px-2 flex items-center gap-2 transition-all ${activeTab === 'trends' ? 'border-b-2 border-blue-500 text-blue-400 font-bold' : 'text-slate-400'}`}
           >
             <TrendingUp className="w-4 h-4" />
-            Macro Trends ({trends.length})
+            Macro Trends
           </button>
           <button 
             onClick={() => setActiveTab('subscribers')}
@@ -159,16 +186,23 @@ export default function App() {
               </div>
             )}
             {insights.map(i => (
-              <div key={i._id} className="bg-slate-800/50 border border-slate-700 p-6 rounded-xl group">
+              <div key={i._id} className="bg-slate-800/50 border border-slate-700 p-6 rounded-xl group overflow-hidden">
                 <div className="flex justify-between items-start mb-4">
-                  <div>
-                    <h3 className="text-xl font-bold mb-1 flex items-center gap-2">
-                      {i.title}
-                      <a href={i.external_id} target="_blank" className="text-slate-500 hover:text-blue-400">
-                        <ExternalLink className="w-4 h-4" />
-                      </a>
-                    </h3>
-                    <div className="flex gap-2">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                      <h3 className="text-xl font-bold flex items-center gap-2">
+                        {i.title}
+                        <a href={i.external_id} target="_blank" className="text-slate-500 hover:text-blue-400">
+                          <ExternalLink className="w-4 h-4" />
+                        </a>
+                      </h3>
+                      {i.source === 'github' && i.metadata?.stars !== undefined && (
+                        <div className="flex items-center gap-1 bg-amber-900/20 text-amber-500 px-2 py-0.5 rounded text-xs font-bold border border-amber-900/30">
+                          <Star className="w-3 h-3 fill-amber-500" /> {i.metadata.stars.toLocaleString()}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap gap-2">
                       <span className="text-xs bg-slate-700 px-2 py-1 rounded text-slate-300 uppercase tracking-wider">{i.source}</span>
                       {i.tags.map(tag => (
                         <span key={tag} className="text-xs bg-emerald-900/30 text-emerald-400 px-2 py-1 rounded">#{tag}</span>
@@ -176,32 +210,109 @@ export default function App() {
                     </div>
                   </div>
                   <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-all">
-                    <button onClick={() => approveInsight(i.external_id)} className="p-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg"><Check className="w-5 h-5" /></button>
-                    <button className="p-2 bg-red-600/20 hover:bg-red-600/40 text-red-400 rounded-lg"><X className="w-5 h-5" /></button>
+                    <button onClick={() => approveInsight(i.external_id)} className="p-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg" title="Approve & Send"><Check className="w-5 h-5" /></button>
+                    <button className="p-2 bg-red-600/20 hover:bg-red-600/40 text-red-400 rounded-lg" title="Reject"><X className="w-5 h-5" /></button>
                   </div>
                 </div>
-                <div className="grid md:grid-cols-3 gap-6 text-sm text-slate-300">
-                  <div><h4 className="text-xs font-bold text-slate-500 uppercase mb-2">What it is</h4><p>{i.what_is_it}</p></div>
-                  <div><h4 className="text-xs font-bold text-slate-500 uppercase mb-2">Why it matters</h4><p>{i.why_it_matters}</p></div>
-                  <div><h4 className="text-xs font-bold text-slate-500 uppercase mb-2">Tech Details</h4><p>{i.technical_implementation}</p></div>
+                
+                <div className="grid md:grid-cols-2 gap-6 text-sm mb-4">
+                  <div className="space-y-4">
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-500 uppercase mb-2">What it is</h4>
+                      <p className="text-slate-200 leading-relaxed">{i.what_is_it}</p>
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-500 uppercase mb-2">Why it matters</h4>
+                      <p className="text-slate-200 leading-relaxed">{i.why_it_matters}</p>
+                    </div>
+                  </div>
+                  <div className="bg-slate-900/50 p-4 rounded-lg border border-slate-700/50">
+                    <h4 className="text-xs font-bold text-slate-500 uppercase mb-2 flex items-center gap-2">
+                      <GitBranch className="w-3 h-3" /> Technical Implementation
+                    </h4>
+                    <p className="text-slate-300 whitespace-pre-wrap leading-relaxed">
+                      {expandedInsight === i._id ? i.technical_implementation : `${i.technical_implementation.substring(0, 150)}...`}
+                    </p>
+                    <button 
+                      onClick={() => setExpandedInsight(expandedInsight === i._id ? null : i._id)}
+                      className="mt-3 text-xs font-bold text-blue-400 hover:text-blue-300 flex items-center gap-1 uppercase"
+                    >
+                      {expandedInsight === i._id ? <><ChevronUp className="w-3 h-3" /> Show Less</> : <><ChevronDown className="w-3 h-3" /> Read Technical Details</>}
+                    </button>
+                  </div>
                 </div>
+                
+                {i.metadata?.updated_at && (
+                  <div className="pt-4 border-t border-slate-700/30 text-[10px] text-slate-500 flex justify-between">
+                    <span>Last Updated: {new Date(i.metadata.updated_at).toLocaleDateString()}</span>
+                    <span>External ID: {i.external_id}</span>
+                  </div>
+                )}
               </div>
             ))}
+            
+            {/* Pagination Controls */}
+            {insightTotalPages > 1 && (
+              <div className="flex justify-center items-center gap-4 mt-6">
+                <button 
+                  onClick={() => setInsightPage(p => Math.max(1, p - 1))}
+                  disabled={insightPage === 1}
+                  className="p-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 rounded-lg flex items-center gap-1"
+                >
+                  <ChevronLeft className="w-4 h-4" /> Previous
+                </button>
+                <span className="text-slate-400 text-sm">
+                  Page {insightPage} of {insightTotalPages}
+                </span>
+                <button 
+                  onClick={() => setInsightPage(p => Math.min(insightTotalPages, p + 1))}
+                  disabled={insightPage === insightTotalPages}
+                  className="p-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 rounded-lg flex items-center gap-1"
+                >
+                  Next <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            )}
           </div>
         )}
 
         {activeTab === 'trends' && (
-          <div className="grid gap-6 md:grid-cols-2">
-            {trends.map(t => (
-              <div key={t._id} className="bg-slate-800/50 border border-slate-700 p-6 rounded-xl relative group">
-                <div className="flex justify-between items-start mb-2">
-                  <h3 className="text-xl font-bold text-emerald-400">{t.trend_name}</h3>
-                  <button onClick={() => sendTrend(t._id)} className="p-2 bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 rounded-lg opacity-0 group-hover:opacity-100 transition-all"><Send className="w-4 h-4" /></button>
+          <div className="grid gap-6">
+            <div className="grid md:grid-cols-2 gap-6">
+              {trends.map(t => (
+                <div key={t._id} className="bg-slate-800/50 border border-slate-700 p-6 rounded-xl relative group">
+                  <div className="flex justify-between items-start mb-2">
+                    <h3 className="text-xl font-bold text-emerald-400">{t.trend_name}</h3>
+                    <button onClick={() => sendTrend(t._id)} className="p-2 bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 rounded-lg opacity-0 group-hover:opacity-100 transition-all" title="Send to Telegram"><Send className="w-4 h-4" /></button>
+                  </div>
+                  <p className="text-slate-400 text-sm mb-4 leading-relaxed">{t.description}</p>
+                  <div className="flex flex-wrap gap-2">{t.related_insights.map(r => (<span key={r} className="text-[10px] bg-slate-700 px-2 py-1 rounded text-slate-300 italic">{r}</span>))}</div>
                 </div>
-                <p className="text-slate-400 text-sm mb-4">{t.description}</p>
-                <div className="flex flex-wrap gap-2">{t.related_insights.map(r => (<span key={r} className="text-[10px] bg-slate-700 px-2 py-1 rounded text-slate-300 italic">{r}</span>))}</div>
+              ))}
+            </div>
+            
+            {/* Pagination Controls */}
+            {trendTotalPages > 1 && (
+              <div className="flex justify-center items-center gap-4 mt-6">
+                <button 
+                  onClick={() => setTrendPage(p => Math.max(1, p - 1))}
+                  disabled={trendPage === 1}
+                  className="p-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 rounded-lg flex items-center gap-1"
+                >
+                  <ChevronLeft className="w-4 h-4" /> Previous
+                </button>
+                <span className="text-slate-400 text-sm">
+                  Page {trendPage} of {trendTotalPages}
+                </span>
+                <button 
+                  onClick={() => setTrendPage(p => Math.min(trendTotalPages, p + 1))}
+                  disabled={trendPage === trendTotalPages}
+                  className="p-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 rounded-lg flex items-center gap-1"
+                >
+                  Next <ChevronRight className="w-4 h-4" />
+                </button>
               </div>
-            ))}
+            )}
           </div>
         )}
 
@@ -213,24 +324,14 @@ export default function App() {
               </div>
             )}
             {subscribers.map(s => (
-              <div key={s._id} className="bg-slate-800/50 border border-slate-700 p-4 rounded-xl flex justify-between items-center">
+              <div key={s._id} className="bg-slate-800/50 border border-slate-700 p-4 rounded-xl flex justify-between items-center hover:border-slate-600 transition-all">
                 <div>
                   <h3 className="font-bold text-blue-400">{s.user_name}</h3>
                   <p className="text-xs text-slate-500">Telegram ID: {s.chat_id}</p>
                 </div>
                 <div className="flex gap-2">
-                  <button 
-                    onClick={() => approveSubscriber(s.chat_id)}
-                    className="flex items-center gap-1 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-sm font-medium"
-                  >
-                    <Check className="w-4 h-4" /> Approve
-                  </button>
-                  <button 
-                    onClick={() => rejectSubscriber(s.chat_id)}
-                    className="flex items-center gap-1 px-4 py-2 bg-red-600/20 hover:bg-red-600/40 text-red-400 rounded-lg text-sm font-medium"
-                  >
-                    <X className="w-4 h-4" /> Reject
-                  </button>
+                  <button onClick={() => approveSubscriber(s.chat_id)} className="flex items-center gap-1 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-sm font-medium"><Check className="w-4 h-4" /> Approve</button>
+                  <button onClick={() => rejectSubscriber(s.chat_id)} className="flex items-center gap-1 px-4 py-2 bg-red-600/20 hover:bg-red-600/40 text-red-400 rounded-lg text-sm font-medium"><X className="w-4 h-4" /> Reject</button>
                 </div>
               </div>
             ))}

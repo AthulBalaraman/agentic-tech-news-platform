@@ -250,15 +250,24 @@ async def trigger_collection():
 # --- UI Endpoints (Sprint 4) ---
 
 @app.get("/api/insights")
-async def get_insights(status: str = "pending"):
-    """Fetch insights based on status (pending, approved, rejected)."""
-    cursor = db.db["insights"].find({"status": status}).sort("created_at", -1)
-    insights = await cursor.to_list(length=100)
+async def get_insights(status: str = "pending", page: int = 1, limit: int = 10):
+    """Fetch insights based on status (pending, approved, rejected) with pagination."""
+    skip = (page - 1) * limit
+    cursor = db.db["insights"].find({"status": status}).sort("created_at", -1).skip(skip).limit(limit)
+    insights = await cursor.to_list(length=limit)
+    
+    total = await db.db["insights"].count_documents({"status": status})
     
     # Convert ObjectId to string for JSON serialization
     for doc in insights:
         doc["_id"] = str(doc["_id"])
-    return insights
+        
+    return {
+        "items": insights,
+        "total": total,
+        "page": page,
+        "pages": (total + limit - 1) // limit
+    }
 
 @app.post("/api/insights/{external_id:path}/approve")
 async def approve_insight(external_id: str):
@@ -294,14 +303,23 @@ async def approve_insight(external_id: str):
     return {"message": "Insight approved and indexed in Vector DB"}
 
 @app.get("/api/trends")
-async def get_trends():
-    """Fetch identified macro trends."""
-    cursor = db.db["trends"].find().sort("detected_at", -1)
-    trends = await cursor.to_list(length=20)
+async def get_trends(page: int = 1, limit: int = 10):
+    """Fetch identified macro trends with pagination."""
+    skip = (page - 1) * limit
+    cursor = db.db["trends"].find().sort("detected_at", -1).skip(skip).limit(limit)
+    trends = await cursor.to_list(length=limit)
+    
+    total = await db.db["trends"].count_documents({})
     
     for doc in trends:
         doc["_id"] = str(doc["_id"])
-    return trends
+        
+    return {
+        "items": trends,
+        "total": total,
+        "page": page,
+        "pages": (total + limit - 1) // limit
+    }
 
 @app.post("/api/trends/{trend_id}/send")
 async def send_trend(trend_id: str):
