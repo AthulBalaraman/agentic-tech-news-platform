@@ -94,7 +94,7 @@ python -m venv venv
 pip install -r requirements.txt
 
 # Start the Backend server
-
+python -m uvicorn backend.app.main:app --reload --port 8000
 
 
 
